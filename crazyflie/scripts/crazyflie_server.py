@@ -42,6 +42,8 @@ from tf2_ros import TransformBroadcaster
 
 from functools import partial
 from math import degrees, radians, pi, isnan
+from rclpy.signals import SignalHandlerOptions
+
 
 type_cf_param_to_ros_param = {
     "uint8_t": ParameterType.PARAMETER_INTEGER,
@@ -1302,10 +1304,19 @@ class CrazyflieServer(Node):
 def main(args=None):
 
     cflib.crtp.init_drivers()
-    rclpy.init(args=args)
+    rclpy.init(args=args, signal_handler_options=SignalHandlerOptions.NO)    
     crazyflie_server = CrazyflieServer()
 
-    rclpy.spin(crazyflie_server)
+    try:
+        rclpy.spin(crazyflie_server)
+    except:
+        try:
+            crazyflie_server.get_logger().info("Waiting for drones to land")
+            time.sleep(5.0)
+        except KeyboardInterrupt:
+            crazyflie_server.get_logger().info("Killing crazyflie server")
+            pass
+        pass
 
     crazyflie_server.destroy_node()
     rclpy.shutdown()

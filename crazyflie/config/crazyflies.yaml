@@ -29,19 +29,19 @@ robots:
     enabled: true
     # enabled: false
     uri: radio://0/80/2M/E7E7E7E703
-    initial_position: [ 0.147, 0.155, 0.11]
+    initial_position: [-1.0, 2.0, 0.0]
     type: cf21
 
   cf02:
     # enabled: true
     enabled: true
     uri: radio://0/80/2M/E7E7E7E702
-    initial_position: [ 0.162, -0.47, 0.0]
+    initial_position: [1.0, 2.0, 0.0]
     type: cf21
 
   cf09: # das hatte heute schon funktioniert
     # enabled: true
-    enabled: true
+    enabled: false
     uri: radio://0/80/2M/E7E7E7E709
     initial_position: [ -0.478, -0.47, 0.0]
     type: cf21
@@ -50,7 +50,7 @@ robots:
     enabled: true
     # enabled: false
     uri: radio://0/80/2M/E7E7E7E701
-    initial_position: [ -0.478, 0.175, 0.1]
+    initial_position: [ 0.0, 0.0, 0.0]
     type: cf21  # see robot_types
 
 

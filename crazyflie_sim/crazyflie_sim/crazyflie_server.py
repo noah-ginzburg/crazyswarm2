@@ -16,6 +16,7 @@ from crazyflie_interfaces.srv import NotifySetpointsStop, StartTrajectory, Uploa
 from geometry_msgs.msg import Twist
 import rclpy
 from rclpy.node import Node
+from rclpy.signals import SignalHandlerOptions
 import rowan
 from std_msgs.msg import String
 from std_srvs.srv import Empty
@@ -396,14 +397,19 @@ class CrazyflieServer(Node):
 
 def main(args=None):
 
-    rclpy.init(args=args)
+    rclpy.init(args=args, signal_handler_options=SignalHandlerOptions.NO)
     crazyflie_server = CrazyflieServer()
     rclpy.get_default_context().on_shutdown(crazyflie_server.on_shutdown_callback)
 
     try:
         rclpy.spin(crazyflie_server)
     except KeyboardInterrupt:
-        crazyflie_server.on_shutdown_callback()
+        crazyflie_server.get_logger().info(
+            'First Ctrl-C: keeping services alive for landing. Press Ctrl-C again to shut down.')
+        try:
+            rclpy.spin(crazyflie_server)
+        except KeyboardInterrupt:
+            crazyflie_server.on_shutdown_callback()
     finally:
         rclpy.try_shutdown()
         crazyflie_server.destroy_node()
