@@ -28,28 +28,28 @@ robots:
   cf03:
     enabled: true
     # enabled: false
-    uri: radio://0/80/2M/E7E7E7E703
+    uri: radio://0/100/2M/E7E7E7E703
     initial_position: [-0.5, 1.0, 0.0]
     type: cf21
 
   cf02:
     # enabled: true
     enabled: true
-    uri: radio://0/80/2M/E7E7E7E702
+    uri: radio://0/100/2M/E7E7E7E702
     initial_position: [0.5, 1.0, 0.0]
     type: cf21
 
   cf09: # das hatte heute schon funktioniert
     # enabled: true
     enabled: false
-    uri: radio://0/80/2M/E7E7E7E709
+    uri: radio://0/100/2M/E7E7E7E7E9
     initial_position: [ -0.478, -0.47, 0.0]
     type: cf21
 
   cf01:
     enabled: true
     # enabled: false
-    uri: radio://0/80/2M/E7E7E7E701
+    uri: radio://0/100/2M/E7E7E7E701
     initial_position: [ 0.0, 0.0, 0.0]
     type: cf21  # see robot_types
 
@@ -172,13 +172,19 @@ all:
         frequency: 100 # Hz
       status:
         frequency: 1 # Hz
-    #custom_topics:
-    #  topic_name1:
-    #    frequency: 10 # Hz
-    #    vars: ["stateEstimateZ.x", "stateEstimateZ.y", "stateEstimateZ.z", "pm.vbat"]
-    #  topic_name2:
-    #    frequency: 1 # Hz
-    #    vars: ["stabilizer.roll", "stabilizer.pitch", "stabilizer.yaw"]
+    # --- tuning diagnostics (uncomment to re-enable; adds radio load) ---
+    # custom_topics:
+    #   ctrl:
+    #     frequency: 50 # Hz
+    #     # What the position/velocity controller is COMMANDING the attitude loop to do.
+    #     # On a pure vertical (z) command these should stay near 0; if roll/pitch
+    #     # targets swing, the position controller is over-reacting -> wobble/flip.
+    #     vars: ["ctrltarget.roll", "ctrltarget.pitch", "stabilizer.thrust"]
+    #   est:
+    #     frequency: 50 # Hz
+    #     # Kalman position variance = estimate health. If these are large or growing,
+    #     # the estimate is bad -> fix Vicon/extpos before touching any gain.
+    #     vars: ["kalman.varPX", "kalman.varPY", "kalman.varPZ"]
   # firmware parameters for all drones (use robot_types/type_name to set per type, or
   # robots/drone_name to set per drone)
   firmware_params:
@@ -187,8 +193,8 @@ all:
     stabilizer:
       # estimator: 1 # 1: complementary, 2: kalman
       estimator: 2 # 1: complementary, 2: kalman
-      # controller: 1 # 1: PID, 2: mellinger
-      controller: 2 # 1: PID, 2: mellinger
+      controller: 1 # 1: PID, 2: mellinger  (PID for bring-up; mellinger flips on imperfect estimate)
+      # controller: 2 # 1: PID, 2: mellinger
     # ring:
     #   effect: 16 # 6: double spinner, 7: solid color, 16: packetRate
     #   solidBlue: 255 # if set to solid color
@@ -196,10 +202,10 @@ all:
     #   solidRed: 0 # if set to solid color
     #   headlightEnable: 0
     locSrv:
-      extPosStdDev: 1e-3
+      extPosStdDev: 1e-2   # 1cm; 1e-3 (1mm) over-trusts mocap and diverges the Kalman filter
       extQuatStdDev: 0.5e-1
-    # kalman:
-    #   resetEstimation: 1
+    kalman:
+      resetEstimation: 1   # clear NaN/stale estimator state on connect (NaN never self-heals)
   # reference frame for on-board state-estimate of all drones (use robot_types/type_name to set per type, or
   # robots/drone_name to set per drone)
   # reference_frame: "world"

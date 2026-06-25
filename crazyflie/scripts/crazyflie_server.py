@@ -15,6 +15,7 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from rclpy.duration import Duration
 
 import time
+import warnings
 
 import cflib.crtp
 from cflib.crazyflie.swarm import CachedCfFactory
@@ -22,6 +23,14 @@ from cflib.crazyflie.swarm import Swarm
 from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.mem import MemoryElement
 from cflib.crazyflie.mem import Poly4D
+
+# cflib falls back to the legacy velocity-world packet on CFs running an
+# older protocol version (<=8); this is expected on our current firmware.
+warnings.filterwarnings(
+    'ignore',
+    message='Using legacy TYPE_VELOCITY_WORLD_LEGACY.*',
+    category=DeprecationWarning,
+)
 
 from crazyflie_interfaces.srv import Takeoff, Land, GoTo, RemoveLogging, AddLogging
 from crazyflie_interfaces.srv import UploadTrajectory, StartTrajectory, NotifySetpointsStop
@@ -634,21 +643,8 @@ class CrazyflieServer(Node):
             self.get_logger().info("Could not publish pose message, stopping pose log")
             self.swarm._cfs[uri].logging["pose_log_config"].stop()
 
-        t_base = TransformStamped()
-        t_base.header.stamp = self.get_clock().now().to_msg()
-        t_base.header.frame_id = self.swarm._cfs[uri].reference_frame
-        t_base.child_frame_id = cf_name
-        t_base.transform.translation.x = x
-        t_base.transform.translation.y = y
-        t_base.transform.translation.z = z
-        t_base.transform.rotation.x = q[0]
-        t_base.transform.rotation.y = q[1]
-        t_base.transform.rotation.z = q[2]
-        t_base.transform.rotation.w = q[3]
-        try:
-            self.tfbr.sendTransform(t_base)
-        except:
-            self.get_logger().info("Could not publish pose tf")
+        # tf broadcast disabled here: vicon_bridge.py is the sole publisher of
+        # the mocap->cf_name transform to avoid two competing tf sources.
 
     def _log_odom_data_callback(self, timestamp, data, logconf, uri):
         """
@@ -695,22 +691,8 @@ class CrazyflieServer(Node):
             self.get_logger().info("Could not publish odom message, stopping odom log")
             self.swarm._cfs[uri].logging["odom_log_config"].stop()
 
-        t_base = TransformStamped()
-        t_base.header.stamp = self.get_clock().now().to_msg()
-        t_base.header.frame_id = self.swarm._cfs[uri].reference_frame
-        t_base.child_frame_id = cf_name
-        t_base.transform.translation.x = x
-        t_base.transform.translation.y = y
-        t_base.transform.translation.z = z
-        t_base.transform.rotation.x = q[0]
-        t_base.transform.rotation.y = q[1]
-        t_base.transform.rotation.z = q[2]
-        t_base.transform.rotation.w = q[3]
-
-        try:
-            self.tfbr.sendTransform(t_base)
-        except:
-            self.get_logger().info("Could not publish odom tf")
+        # tf broadcast disabled here: vicon_bridge.py is the sole publisher of
+        # the mocap->cf_name transform to avoid two competing tf sources.
 
     def _log_status_data_callback(self, timestamp, data, logconf, uri):
         """
@@ -1309,10 +1291,10 @@ def main(args=None):
 
     try:
         rclpy.spin(crazyflie_server)
-    except:
+    except KeyboardInterrupt:
         try:
             crazyflie_server.get_logger().info("Waiting for drones to land")
-            time.sleep(5.0)
+            rclpy.spin(crazyflie_server)
         except KeyboardInterrupt:
             crazyflie_server.get_logger().info("Killing crazyflie server")
             pass
