@@ -26,7 +26,7 @@ robots:
   #   type: cf21
 
   cf03:
-    enabled: true
+    enabled: false
     # enabled: false
     uri: radio://0/100/2M/E7E7E7E703
     initial_position: [-0.5, 1.0, 0.0]
@@ -34,20 +34,20 @@ robots:
 
   cf02:
     # enabled: true
-    enabled: true
+    enabled: false
     uri: radio://0/100/2M/E7E7E7E702
     initial_position: [0.5, 1.0, 0.0]
     type: cf21
 
   cf09: # das hatte heute schon funktioniert
     # enabled: true
-    enabled: false
+    enabled: true
     uri: radio://0/100/2M/E7E7E7E7E9
     initial_position: [ -0.478, -0.47, 0.0]
     type: cf21
 
   cf01:
-    enabled: true
+    enabled: false
     # enabled: false
     uri: radio://0/100/2M/E7E7E7E701
     initial_position: [ 0.0, 0.0, 0.0]
@@ -120,19 +120,22 @@ robot_types:
     # firmware_params:
     #   kalman:
     #     pNAcc_xy: 1.0 # default 0.5
-    firmware_logging:
-      enabled: true
-      # default_topics:
-      #   pose:
-      #     frequency: 1 # Hz
-      custom_topics:
-        low_level_control: 
-          frequency: 50
-          vars: ["ctrlMel.cmd_thrust", "ctrlMel.cmd_roll", "ctrlMel.cmd_pitch", "ctrlMel.cmd_yaw"]
-        # your_topic_name:
-          # frequency: 10
-          # vars: ["stateEstimateZ.x", "stateEstimateZ.y", "stateEstimateZ.z", "acc.x", "acc.y", "acc.z"]
-          ## vars: ["acc.x", "acc.y", "acc.z"]
+    # firmware_logging: DISABLED -- every log topic here is extra radio traffic
+    # competing with the extpos/extpose position corrections sent to the drone;
+    # this custom logging was fighting the Vicon corrections for radio time and
+    # causing the estimator to stall/drift. Re-enable only for debugging, not
+    # during normal flight.
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     low_level_control:
+    #       frequency: 50
+    #       vars: ["ctrlMel.cmd_thrust", "ctrlMel.cmd_roll", "ctrlMel.cmd_pitch", "ctrlMel.cmd_yaw"]
+    #     # Per-motor PWM (0..65535). A weak motor shows consistently HIGHER pwm than
+    #     # its diagonal partner; pegged at 65535 = saturated -> no attitude headroom.
+    #     motor_pwm:
+    #       frequency: 20
+    #       vars: ["motor.m1", "motor.m2", "motor.m3", "motor.m4"]
 
     # reference_frame: "odom" 
 
@@ -164,27 +167,38 @@ robot_types:
 all:
   # firmware logging for all drones (use robot_types/type_name to set per type, or
   # robots/drone_name to set per drone)
+  # firmware_logging: DISABLED -- pose (100Hz) and status (1Hz) readback were
+  # competing with position-correction packets for radio time (see note in
+  # robot_types.cf21). Re-enable only for debugging, not during normal flight.
   firmware_logging:
     enabled: true
     default_topics:
-     # remove to disable default topic
       pose:
-        frequency: 100 # Hz
+        frequency: 2 # Hz
       status:
         frequency: 1 # Hz
     # --- tuning diagnostics (uncomment to re-enable; adds radio load) ---
-    # custom_topics:
+    custom_topics:
     #   ctrl:
     #     frequency: 50 # Hz
     #     # What the position/velocity controller is COMMANDING the attitude loop to do.
     #     # On a pure vertical (z) command these should stay near 0; if roll/pitch
     #     # targets swing, the position controller is over-reacting -> wobble/flip.
     #     vars: ["ctrltarget.roll", "ctrltarget.pitch", "stabilizer.thrust"]
-    #   est:
-    #     frequency: 50 # Hz
-    #     # Kalman position variance = estimate health. If these are large or growing,
-    #     # the estimate is bad -> fix Vicon/extpos before touching any gain.
-    #     vars: ["kalman.varPX", "kalman.varPY", "kalman.varPZ"]
+      # Per-motor PWM (0..65535) to find a weak motor/prop: the weak one runs
+      # consistently HIGHER than its diagonal partner; pegged at 65535 = saturated.
+      # TEMPORARY debug load -- remove again after the asymmetry is found.
+      motor_pwm:
+        frequency: 25 # keep low: downlink log traffic competes with 100Hz extpose uplink
+        vars: ["motor.m1", "motor.m2", "motor.m3", "motor.m4"]
+      est:
+        frequency: 5 # Hz
+        # Kalman position variance = estimate health. If these are large or growing,
+        # the estimate is bad -> fix Vicon/extpos before touching any gain.
+        # roll/pitch/yaw added to diagnose spiral-on-takeoff: position topics can
+        # all "match" while the mocap object frame is yawed/tilted vs the body.
+        vars: ["stateEstimate.x", "stateEstimate.y", "stateEstimate.z",
+               "stateEstimate.roll", "stateEstimate.pitch", "stateEstimate.yaw"]
   # firmware parameters for all drones (use robot_types/type_name to set per type, or
   # robots/drone_name to set per drone)
   firmware_params:
@@ -202,8 +216,8 @@ all:
     #   solidRed: 0 # if set to solid color
     #   headlightEnable: 0
     locSrv:
-      extPosStdDev: 1e-2   # 1cm; 1e-3 (1mm) over-trusts mocap and diverges the Kalman filter
-      extQuatStdDev: 0.5e-1
+      extPosStdDev: 1e-2
+      extQuatStdDev: 4.5e-3
     kalman:
       resetEstimation: 1   # clear NaN/stale estimator state on connect (NaN never self-heals)
   # reference frame for on-board state-estimate of all drones (use robot_types/type_name to set per type, or

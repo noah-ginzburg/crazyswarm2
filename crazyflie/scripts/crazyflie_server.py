@@ -24,11 +24,11 @@ from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.mem import MemoryElement
 from cflib.crazyflie.mem import Poly4D
 
-# cflib falls back to the legacy velocity-world packet on CFs running an
-# older protocol version (<=8); this is expected on our current firmware.
+# cflib falls back to legacy packet types (velocity-world, hover, ...) on CFs
+# running an older protocol version (<=8); this is expected on our current firmware.
 warnings.filterwarnings(
     'ignore',
-    message='Using legacy TYPE_VELOCITY_WORLD_LEGACY.*',
+    message='Using legacy TYPE_.*_LEGACY.*',
     category=DeprecationWarning,
 )
 
