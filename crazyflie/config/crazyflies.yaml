@@ -25,32 +25,43 @@ robots:
   #   initial_position: [ 0.0, 0.4, 0.0]
   #   type: cf21
 
+  # cf01/cf02/cf03 form an exact equilateral target triangle on the unit
+  # icosphere (pv.Icosphere(radius=1.0, nsub=3), same as spherical_ran).
+  # Nodes 12/21/35: every pair is 120 deg of arc apart, centroid at the
+  # sphere center. initial_position is the FLOOR placement (x, y of the
+  # node, z=0); each drone reaches its node z at takeoff via LAUNCH_HEIGHTS
+  # in crazyswarm_bringup/launch/real_drone.launch.py (sphere center 1.0 m
+  # above the floor).
+
   cf03:
     enabled: false
     # enabled: false
     uri: radio://0/100/2M/E7E7E7E703
-    initial_position: [-0.5, 1.0, 0.0]
+    # icosphere node 35: (-0.809017, -0.500000, -0.309017)
+    initial_position: [-0.809017, -0.500000, 0.0]
     type: cf21
 
   cf02:
     # enabled: true
     enabled: false
     uri: radio://0/100/2M/E7E7E7E702
-    initial_position: [0.5, 1.0, 0.0]
+    # icosphere node 21: (0.500000, -0.309017, 0.809017)
+    initial_position: [0.500000, -0.309017, 0.0]
     type: cf21
 
   cf09: # das hatte heute schon funktioniert
     # enabled: true
     enabled: true
-    uri: radio://0/100/2M/E7E7E7E7E9
-    initial_position: [ -0.478, -0.47, 0.0]
+    uri: radio://0/100/2M/E7E7E7E7E8
+    initial_position: [ 0.0, 0.0, 0.0]
     type: cf21
 
   cf01:
     enabled: false
     # enabled: false
     uri: radio://0/100/2M/E7E7E7E701
-    initial_position: [ 0.0, 0.0, 0.0]
+    # icosphere node 12: (0.309017, 0.809017, -0.500000)
+    initial_position: [0.309017, 0.809017, 0.0]
     type: cf21  # see robot_types
 
 
@@ -189,7 +200,7 @@ all:
       # consistently HIGHER than its diagonal partner; pegged at 65535 = saturated.
       # TEMPORARY debug load -- remove again after the asymmetry is found.
       motor_pwm:
-        frequency: 25 # keep low: downlink log traffic competes with 100Hz extpose uplink
+        frequency: 7
         vars: ["motor.m1", "motor.m2", "motor.m3", "motor.m4"]
       est:
         frequency: 5 # Hz
@@ -217,7 +228,12 @@ all:
     #   headlightEnable: 0
     locSrv:
       extPosStdDev: 1e-2
-      extQuatStdDev: 4.5e-3
+      # 4.5e-2 (was 4.5e-3): loosened 10x for full-pose fusion. Vicon attitude
+      # arrives with latency; trusting it tightly drags the EKF attitude behind
+      # reality during takeoff transients (suspected cause of full-pose tip-overs
+      # in the 07-16 A/B and 07-17 flights). At 4.5e-2 Vicon still bounds yaw
+      # drift over seconds, but fast attitude stays gyro-driven.
+      extQuatStdDev: 4.5e-2
     kalman:
       resetEstimation: 1   # clear NaN/stale estimator state on connect (NaN never self-heals)
   # reference frame for on-board state-estimate of all drones (use robot_types/type_name to set per type, or
