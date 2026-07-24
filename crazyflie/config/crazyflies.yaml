@@ -29,16 +29,21 @@ robots:
   # icosphere (pv.Icosphere(radius=1.0, nsub=3), same as spherical_ran).
   # Nodes 12/21/35: every pair is 120 deg of arc apart, centroid at the
   # sphere center. initial_position is the FLOOR placement (x, y of the
-  # node, z=0); each drone reaches its node z at takeoff via LAUNCH_HEIGHTS
-  # in crazyswarm_bringup/launch/real_drone.launch.py (sphere center 1.0 m
-  # above the floor).
+  # node, z=0) -- x,y match the node exactly, but z can't be recovered from
+  # them (sqrt(1 - x^2 - y^2) only gives the magnitude, and the triangle only
+  # stays equilateral with the correct sign per node -- flattening all three
+  # to the same hemisphere collapses it). So each node's z ships here as
+  # delta_z, read by crazyswarm_bringup/launch/*.launch.py and added on top
+  # of controller_server's launch_height parameter at takeoff (the drone's
+  # own initial_position.z stays 0 -- it still starts flat on the floor).
 
   cf03:
     enabled: false
-    # enabled: false
+    # enabled: true
     uri: radio://0/100/2M/E7E7E7E703
     # icosphere node 35: (-0.809017, -0.500000, -0.309017)
     initial_position: [-0.809017, -0.500000, 0.0]
+    delta_z: -0.309017
     type: cf21
 
   cf02:
@@ -47,6 +52,7 @@ robots:
     uri: radio://0/100/2M/E7E7E7E702
     # icosphere node 21: (0.500000, -0.309017, 0.809017)
     initial_position: [0.500000, -0.309017, 0.0]
+    delta_z: 0.809017
     type: cf21
 
   cf09: # das hatte heute schon funktioniert
@@ -54,6 +60,7 @@ robots:
     enabled: true
     uri: radio://0/100/2M/E7E7E7E7E8
     initial_position: [ 0.0, 0.0, 0.0]
+    delta_z: 0.0
     type: cf21
 
   cf01:
@@ -62,6 +69,7 @@ robots:
     uri: radio://0/100/2M/E7E7E7E701
     # icosphere node 12: (0.309017, 0.809017, -0.500000)
     initial_position: [0.309017, 0.809017, 0.0]
+    delta_z: -0.500000
     type: cf21  # see robot_types
 
 
@@ -200,10 +208,10 @@ all:
       # consistently HIGHER than its diagonal partner; pegged at 65535 = saturated.
       # TEMPORARY debug load -- remove again after the asymmetry is found.
       motor_pwm:
-        frequency: 7
+        frequency: 5
         vars: ["motor.m1", "motor.m2", "motor.m3", "motor.m4"]
       est:
-        frequency: 5 # Hz
+        frequency: 10 # Hz
         # Kalman position variance = estimate health. If these are large or growing,
         # the estimate is bad -> fix Vicon/extpos before touching any gain.
         # roll/pitch/yaw added to diagnose spiral-on-takeoff: position topics can
